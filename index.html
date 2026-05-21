@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StudyLink Pro</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-auth-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-firestore-compat.min.js"></script>
+<style>
+:root{--hdr:#021841;--bg:#E5EEF9;--btnB:#0A3C6D;--btnO:#F39C12;--green:#2ECC71;--card:#fff;--txt:#111;--sub:#555;--brd:#ccc;--nav:#fff;--inp:#fff;}
+body.dark{--bg:#0f1923;--card:#1a2636;--txt:#f0f0f0;--sub:#aab;--brd:#2e3f52;--nav:#121e2d;--inp:#1a2636;--hdr:#0a1e35;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',sans-serif;background:var(--bg);padding-bottom:70px;color:var(--txt);}
+.hdr{background:var(--hdr);color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100;}
+.page{max-width:500px;margin:auto;padding:14px;display:none;}
+.card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.1);position:relative;}
+.btn{background:var(--btnB);color:#fff;border:none;padding:11px;border-radius:10px;width:100%;font-size:14px;font-weight:bold;cursor:pointer;margin-top:6px;display:block;}
+.btn.g{background:#27ae60;} .btn.r{background:#e74c3c;} .btn.o{background:var(--btnO);}
+input,textarea,select{width:100%;padding:10px;margin:5px 0;border:1px solid var(--brd);border-radius:8px;background:var(--inp);color:var(--txt);}
+.avatar{width:58px;height:58px;background:#ddd;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;border:3px solid var(--btnB);}
+.avatar img{width:100%;height:100%;object-fit:cover;}
+.odot{position:absolute;bottom:2px;right:2px;width:12px;height:12px;border-radius:50%;border:2px solid var(--card);background:#95a5a6;}
+.odot.online{background:#2ECC71;}
+/* NAV */
+.nav{position:fixed;bottom:0;width:100%;background:var(--nav);display:flex;border-top:1px solid var(--brd);z-index:100;}
+.ni{text-align:center;font-size:9px;color:#888;cursor:pointer;flex:1;padding:8px 0;display:flex;flex-direction:column;align-items:center;gap:2px;}
+.ni.on{color:var(--btnB);font-weight:bold;}
+.ni svg{width:22px;height:22px;fill:currentColor;}
+/* CHAT */
+.cwin{position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);z-index:200;display:none;flex-direction:column;}
+.chdr{color:#fff;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;}
+.cmsgbox{flex:1;padding:12px;overflow-y:auto;}
+.cbottom{background:var(--card);border-top:1px solid var(--brd);padding:8px;}
+.cin-wrap{display:flex;align-items:center;gap:8px;}
+.cin-input{flex:1;padding:10px 15px;border-radius:20px;border:1px solid var(--brd);outline:none;}
+/* STICKERS */
+#stickerPanel{display:none;max-height:250px;overflow-y:auto;background:var(--card);padding:10px;border-top:1px solid var(--brd);}
+.sticker-grid{display:grid;grid-template-columns:repeat(6, 1fr);gap:10px;}
+.sticker-btn{font-size:24px;background:none;border:none;cursor:pointer;}
+.sbadge{font-size:10px;padding:2px 6px;border-radius:10px;display:inline-block;margin-top:4px;}
+.sbadge.online{background:#e8f8ef;color:#27ae60;}
+/* BUBBLES */
+.bw{margin-bottom:10px;display:flex;flex-direction:column;}
+.bw.s{align-items:flex-end;} .bw.o{align-items:flex-start;}
+.bbl{max-width:80%;padding:8px 12px;border-radius:15px;font-size:14px;position:relative;}
+.bbl.s{background:var(--btnB);color:#fff;border-bottom-right-radius:2px;}
+.bbl.o{background:var(--card);color:var(--txt);border-bottom-left-radius:2px;box-shadow:0 1px 3px rgba(0,0,0,0.1);}
+.btime{font-size:9px;opacity:0.7;margin-top:4px;text-align:right;}
+.receipt{font-size:9px;margin-left:4px;}
+.ov{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;display:none;align-items:center;justify-content:center;}
+.spin{width:40px;height:40px;border:4px solid #fff;border-top:4px solid transparent;border-radius:50%;animation:sp 1s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="ov" id="ov"><div class="spin"></div></div>
+<div id="toast" style="position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 20px;border-radius:20px;display:none;z-index:10000;"></div>
+<!-- AUTH SECTION -->
+<div id="auth" style="position:fixed;width:100%;height:100%;background:var(--hdr);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:500;padding:20px;">
+  <h1 style="color:#fff;">🎓 StudyLink</h1>
+  <p id="asub" style="color:#ccc;margin-bottom:20px;">Connect. Study. Grow.</p>
+  <div class="af" id="loginF" style="width:100%;max-width:300px;">
+    <input id="lE" type="email" placeholder="Email">
+    <input id="lP" type="password" placeholder="Password">
+    <button class="abtn o" onclick="doLogin()" style="width:100%;padding:12px;border-radius:10px;border:none;margin-top:10px;font-weight:bold;cursor:pointer;">🔐 Login</button>
+    <button class="btn" onclick="doGoogle()" style="background:#fff;color:#333;margin-top:10px;"><img src="https://www.google.com/favicon.ico" width="16" alt="G"> Continue with Google</button>
+    <p class="aswitch" onclick="showReg()" style="color:#fff;text-decoration:underline;margin-top:15px;text-align:center;cursor:pointer;">No account? Register →</p>
+  </div>
+  <div class="af" id="regF" style="display:none;width:100%;max-width:300px;">
+    <input id="rN" placeholder="Full Name">
+    <input id="rE" type="email" placeholder="Email">
+    <input id="rP" type="password" placeholder="Password">
+    <button class="abtn o" onclick="doReg()" style="width:100%;padding:12px;border-radius:10px;border:none;margin-top:10px;font-weight:bold;">✅ Create Account</button>
+    <p class="aswitch" onclick="showLogin()" style="color:#fff;text-decoration:underline;margin-top:15px;text-align:center;cursor:pointer;">← Back to Login</p>
+  </div>
+</div>
+
+<div class="hdr">
+  <div style="font-size:18px;font-weight:bold;">StudyLink</div>
+  <div style="display:flex;gap:10px;">
+    <button onclick="toggleDark()" style="background:none;border:none;color:#fff;font-size:18px;">🌙</button>
+    <button onclick="doOut()" style="background:none;border:none;color:#fff;font-size:18px;">🚪</button>
+  </div>
+</div>
+
+<!-- PAGES -->
+<div id="Phome" class="page" style="display:block;">
+  <h2 style="margin-bottom:12px;">Feed 🏠</h2>
+  <div id="feed"></div>
+</div>
+
+<div id="Pfind" class="page">
+  <h2 style="margin-bottom:12px;">Find Partners 🔍</h2>
+  <input placeholder="Search name or subject..." oninput="renderFind(this.value)" id="findQ">
+  <div id="findL"></div>
+</div>
+
+<div id="Pmsgs" class="page">
+  <h2 style="margin-bottom:12px;">Messages 💬</h2>
+  <div id="inboxL"></div>
+</div>
+
+<div id="Pme" class="page">
+  <h2 style="margin-bottom:12px;">My Profile 👤</h2>
+  <div class="card" id="myProfileCard">
+    <div style="display:flex;gap:15px;align-items:center;">
+       <div class="avatar" id="myPic">👤</div>
+       <div>
+         <b id="myNameDisplay">User Name</b>
+         <p id="myStatusDisplay" style="font-size:12px;color:green;">Online</p>
+       </div>
+    </div>
+    <button class="btn" onclick="showEF()" style="margin-top:15px;">✏️ Edit Profile</button>
+  </div>
+  
+  <div id="EF" class="card" style="display:none;">
+    <input id="uN" placeholder="Full Name">
+    <textarea id="uBio" placeholder="Bio..."></textarea>
+    <button class="btn g" onclick="savePro()">💾 Save Changes</button>
+  </div>
+</div>
+
+<!-- CHAT WINDOW -->
+<div class="cwin" id="chatW">
+  <div class="chdr" style="background:var(--hdr);">
+    <button onclick="closeChat()" style="background:none;border:none;color:#fff;font-size:20px;">←</button>
+    <b id="chatT">Chat</b>
+    <div style="width:20px;"></div>
+  </div>
+  <div class="cmsgbox" id="msgB"></div>
+  
+  <div id="stickerPanel">
+    <div class="sticker-grid" id="stickerGrid"></div>
+  </div>
+
+  <div class="cbottom">
+    <div class="cin-wrap">
+      <button id="kbdToggle" onclick="toggleKbd()" style="background:none;border:none;font-size:22px;">😊</button>
+      <input class="cin-input" id="mIn" placeholder="Type a message...">
+      <button onclick="sendMsg()" style="background:var(--btnB);color:#fff;border:none;padding:10px;border-radius:50%;width:40px;height:40px;">➔</button>
+    </div>
+    <div style="display:flex;gap:15px;margin-top:8px;justify-content:center;">
+       <button onclick="pickF('image/*')" style="background:none;border:none;font-size:18px;">📷</button>
+       <button onclick="pickF('*/*')" style="background:none;border:none;font-size:18px;">📄</button>
+    </div>
+  </div>
+</div>
+<!-- NAV -->
+<div class="nav">
+  <div onclick="tab('home')" id="nhome" class="ni on"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>Home</div>
+  <div onclick="tab('find')" id="nfind" class="ni"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>Find</div>
+  <div onclick="tab('msgs')" id="nmsgs" class="ni"><svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>Msgs</div>
+  <div onclick="tab('me')" id="nme" class="ni"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>Me</div>
+</div>
+
+<script>
+// CONFIG
+const firebaseConfig = {
+  apiKey: "AIzaSyBQXvheNG_6r5NYjwru_0l_EUsKYrT4w1g",
+  authDomain: "studylink-e1803.firebaseapp.com",
+  projectId: "studylink-e1803",
+  storageBucket: "studylink-e1803.firebasestorage.app",
+  appId: "1:51988890739:web:fa5b3486e7a32c3fe95606"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+
+let CU = null, MP = null;
+let curChatUID = null;
+let chatUnsub = null;
+let isKbdMode = true; // true = keyboard, false = stickers
+
+const STICKERS = ["😀","😂","😍","😎","🙌","🔥","✅","⭐","📚","💡","🚀","🌍","🇮🇹","🇺🇸","🇬🇧","🇫🇷","🇩🇪","🇯🇵"];
+
+// AUTH LOGIC
+auth.onAuthStateChanged(u => {
+  if (u) {
+    CU = u;
+    el('auth').style.display = 'none';
+    loadMyProfile();
+    listenInbox();
+    listenFeed();
+  } else {
+    el('auth').style.display = 'flex';
+  }
+});
+
+async function doLogin() {
+  const e = v('lE'), p = v('lP');
+  if(!e || !p) return showToast("Fill all fields");
+  showOv(true);
+  try { await auth.signInWithEmailAndPassword(e, p); } 
+  catch(err) { showToast(err.message); }
+  showOv(false);
+}
+
+async function doReg() {
+  const n = v('rN'), e = v('rE'), p = v('rP');
+  if(!n || !e || !p) return showToast("Fill all fields");
+  showOv(true);
+  try {
+    const res = await auth.createUserWithEmailAndPassword(e, p);
+    await db.collection('users').doc(res.user.uid).set({
+      uid: res.user.uid, name: n, bio: "", photo: "", status: "Online"
+    });
+  } catch(err) { showToast(err.message); }
+  showOv(false);
+}
+
+// PROFILE
+async function loadMyProfile() {
+  const sn = await db.collection('users').doc(CU.uid).get();
+  if(sn.exists) {
+    MP = sn.data();
+    el('myNameDisplay').textContent = MP.name;
+    el('uN').value = MP.name;
+    el('uBio').value = MP.bio;
+  }
+}
+
+async function savePro() {
+  await db.collection('users').doc(CU.uid).update({ name: v('uN'), bio: v('uBio') });
+  showToast("Profile Updated!");
+  loadMyProfile();
+  hideEF();
+}
+
+// CHAT LOGIC
+function getCID(a, b) { return [a, b].sort().join('_'); }
+
+function openChat(name, uid) {
+  if(uid === CU.uid) return;
+  curChatUID = uid;
+  el('chatT').textContent = name;
+  el('chatW').style.display = 'flex';
+  el('msgB').innerHTML = ""; // Clear previous messages immediately
+  
+  if(chatUnsub) chatUnsub();
+  
+  const cid = getCID(CU.uid, uid);
+  chatUnsub = db.collection('chats').doc(cid).collection('messages').orderBy('createdAt', 'asc').onSnapshot(sn => {
+    el('msgB').innerHTML = "";
+    sn.forEach(doc => {
+      const m = doc.data();
+      el('msgB').innerHTML += buildBubble(m, doc.id);
+    });
+    el('msgB').scrollTop = el('msgB').scrollHeight;
+  });
+}
+
+function buildBubble(m, id) {
+  const isMe = m.sender === CU.uid;
+  const time = m.time || "";
+  return `
+    <div class="bw ${isMe?'s':'o'}">
+      <div class="bbl ${isMe?'s':'o'}" oncontextmenu="askDelete('${id}', event); return false;" onclick="askDelete('${id}', event)">
+        ${m.type === 'text' ? esc(m.text) : `<img src="${m.data}" style="max-width:200px; border-radius:10px;" alt="Image">`}
+        <div class="btime">${time} ${isMe ? (m.seen?'✓✓':'✓') : ''}</div>
+      </div>
+    </div>`;
+}
+
+async function sendMsg(stickerText = null) {
+  const text = stickerText || v('mIn');
+  if(!text && !stickerText) return;
+  
+  const cid = getCID(CU.uid, curChatUID);
+  const m = {
+    sender: CU.uid,
+    text: text,
+    type: 'text',
+    time: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    seen: false
+  };
+  
+  el('mIn').value = "";
+  await db.collection('chats').doc(cid).collection('messages').add(m);
+  await db.collection('chats').doc(cid).set({ lastMsg: text, lastTime: m.time, participants: [CU.uid, curChatUID] }, {merge:true});
+}
+// DELETE FOR EVERYONE
+async function askDelete(mid, e) {
+  if(!confirm("Delete this message for everyone?")) return;
+  const cid = getCID(CU.uid, curChatUID);
+  await db.collection('chats').doc(cid).collection('messages').doc(mid).delete();
+  showToast("Message deleted");
+}
+
+// KEYBOARD TOGGLE
+function toggleKbd() {
+  isKbdMode = !isKbdMode;
+  const panel = el('stickerPanel');
+  const btn = el('kbdToggle');
+  if(!isKbdMode) {
+    panel.style.display = "block";
+    btn.textContent = "⌨️";
+    el('mIn').blur(); // Hide phone keyboard
+  } else {
+    panel.style.display = "none";
+    btn.textContent = "😊";
+    el('mIn').focus(); // Show phone keyboard
+  }
+}
+
+// FILES
+async function pickF(type) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = type;
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if(file.size > 10 * 1024 * 1024) return showToast("File too large (Max 10MB)");
+    showToast("Uploading...");
+    // Note: Cloudinary upload would go here. For now we simulate.
+    showToast("Upload feature requires Cloudinary Config.");
+  };
+  input.click();
+}
+
+// UTILS
+function el(id) { return document.getElementById(id); }
+function v(id) { return el(id).value.trim(); }
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+function showOv(s) { el('ov').style.display = s?'flex':'none'; }
+function showToast(m) { const t=el('toast'); t.textContent=m; t.style.display='block'; setTimeout(()=>t.style.display='none',3000); }
+function tab(id) {
+  document.querySelectorAll('.page').forEach(p => p.style.display='none');
+  el('P'+id).style.display='block';
+  document.querySelectorAll('.ni').forEach(n => n.classList.remove('on'));
+  el('n'+id).classList.add('on');
+}
+function closeChat() { el('chatW').style.display='none'; if(chatUnsub) chatUnsub(); }
+function showEF() { el('EF').style.display='block'; }
+function hideEF() { el('EF').style.display='none'; }
+function toggleDark() { document.body.classList.toggle('dark'); }
+async function doOut() { await auth.signOut(); location.reload(); }
+// INIT STICKERS
+window.onload = () => {
+  const sg = el('stickerGrid');
+  STICKERS.forEach(s => {
+    const b = document.createElement('button');
+    b.className = 'sticker-btn';
+    b.textContent = s;
+    b.onclick = () => { sendMsg(s); toggleKbd(); };
+    sg.appendChild(b);
+  });
+};
+
+function listenInbox() {
+  db.collection('chats').where('participants', 'array-contains', CU.uid).onSnapshot(sn => {
+    const inbox = el('inboxL');
+    inbox.innerHTML = "";
+    sn.forEach(doc => {
+      const d = doc.data();
+      const otherUID = d.participants.find(id => id !== CU.uid);
+      db.collection('users').doc(otherUID).get().then(userDoc => {
+        const u = userDoc.data();
+        inbox.innerHTML += `
+          <div class="card" onclick="openChat('${u.name}', '${u.uid}')" style="display:flex; gap:10px; cursor:pointer;">
+            <div class="avatar" style="width:40px; height:40px;">${u.photo?`<img src="${u.photo}" alt="p">`:'👤'}</div>
+            <div>
+              <b>${u.name}</b>
+              <p style="font-size:12px; color:#777;">${d.lastMsg || 'No messages'}</p>
+            </div>
+          </div>`;
+      });
+    });
+  });
+}
+
+function renderFind(q = "") {
+  db.collection('users').limit(20).get().then(sn => {
+    const fl = el('findL'); fl.innerHTML = "";
+    sn.forEach(doc => {
+      const u = doc.data();
+      if(u.uid === CU.uid) return;
+      if(q && !u.name.toLowerCase().includes(q.toLowerCase())) return;
+      fl.innerHTML += `
+        <div class="card">
+          <div style="display:flex; gap:10px; align-items:center;">
+            <div class="avatar">${u.photo?`<img src="${u.photo}" alt="p">`:'👤'}</div>
+            <div>
+              <b>${u.name}</b>
+              <div class="sbadge online">🟢 Online</div>
+            </div>
+          </div>
+          <button class="btn" onclick="openChat('${u.name}', '${u.uid}')">Message</button>
+        </div>`;
+    });
+  });
+}
+
+function listenFeed() {
+  // Feed listener logic
+  el('feed').innerHTML = "<p style='text-align:center; color:#888;'>Checking for updates...</p>";
+}
+</script>
+</body>
+</html>
