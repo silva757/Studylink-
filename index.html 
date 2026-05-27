@@ -528,7 +528,7 @@ body.dark .notif.unread{background:rgba(124,184,255,.06);}
     <button onclick="pickEmoji('👎')" style="background:none;border:none;font-size:22px;cursor:pointer;">👎</button>
     <button onclick="pickEmoji('❤️')" style="background:none;border:none;font-size:22px;cursor:pointer;">❤️</button>
     <button onclick="pickEmoji('😂')" style="background:none;border:none;font-size:22px;cursor:pointer;">😂</button>
-    <button onclick="pickEmoji('😮')" style="background:none;border:none;font-size:22px;cursor:pointer;">😮</button>
+    <button onclick="pickEmoji('😮')" style="background:none;border:none;font-size:22px;cursor:pointer;"></button>
     <button onclick="pickEmoji('🔥')" style="background:none;border:none;font-size:22px;cursor:pointer;">🔥</button>
     <button onclick="pickEmoji('✅')" style="background:none;border:none;font-size:22px;cursor:pointer;">✅</button>
     <button onclick="pickEmoji('🙏')" style="background:none;border:none;font-size:22px;cursor:pointer;">🙏</button>
